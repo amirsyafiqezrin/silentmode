@@ -1,66 +1,112 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Silentmode Remote File Retrieval System
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+This project is a Laravel 10 application designed to implement a robust, on-demand file transfer system where a central cloud server can retrieve a 100MB file from multiple isolated, NAT-restricted on-premise clients.
 
-## About Laravel
+## Prerequisites
+- **Git**: To clone the repository.
+- **Docker & Docker Desktop**: For running the Laravel Sail environment (MySQL, Redis, etc.).
+- **PHP 8.1+ & Composer**: (Optional, if you wish to run outside Docker).
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+---
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## 1. Cloning the Repository
+Open your terminal and run:
+```bash
+git clone https://github.com/amirsyafiqezrin/silentmode.git
+cd silentmode
+```
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+---
 
-## Learning Laravel
+## 2. Setup and Configuration
+This project is configured with Docker using Laravel Sail.
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+### Environment Setup
+Create your `.env` file from the example:
+```bash
+cp .env.example .env
+```
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+Ensure the following variables are set in your `.env` for the **central server**:
+```dotenv
+DB_CONNECTION=mysql
+DB_HOST=mysql
+DB_PORT=3306
+DB_DATABASE=silentmode
+DB_USERNAME=sail
+DB_PASSWORD=password
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains over 2000 video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+NODE_ROLE=server
+CENTRAL_SERVER_URL=http://localhost
+CLIENT_API_TOKEN=test-token-123
+```
 
-## Laravel Sponsors
+Install the PHP dependencies using a small Docker container:
+```bash
+docker run --rm \
+    -u "$(id -u):$(id -g)" \
+    -v "$(pwd):/var/www/html" \
+    -w /var/www/html \
+    laravelsail/php8.2-composer:latest \
+    composer install --ignore-platform-reqs
+```
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the Laravel [Patreon page](https://patreon.com/taylorotwell).
+---
 
-### Premium Partners
+## 3. Running the Application (Docker)
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Cubet Techno Labs](https://cubettech.com)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[Many](https://www.many.co.uk)**
-- **[Webdock, Fast VPS Hosting](https://www.webdock.io/en)**
-- **[DevSquad](https://devsquad.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[OP.GG](https://op.gg)**
-- **[WebReinvent](https://webreinvent.com/?utm_source=laravel&utm_medium=github&utm_campaign=patreon-sponsors)**
-- **[Lendio](https://lendio.com)**
+Start the Docker containers in the background:
+```bash
+./vendor/bin/sail up -d
+```
+*(On Windows, you must have Docker Desktop running and execute this within WSL2 or Git Bash).*
 
-## Contributing
+Once the containers are running, generate the application key and run migrations:
+```bash
+./vendor/bin/sail artisan key:generate
+./vendor/bin/sail artisan migrate
+```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+---
 
-## Code of Conduct
+## 4. Testing & Reviewing
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+### Seed a Test Client
+First, let's create a client in the database with the token we set in `.env`.
+```bash
+./vendor/bin/sail artisan tinker --execute="App\Models\Client::create(['name' => 'Test Client', 'api_token' => 'test-token-123']);"
+```
 
-## Security Vulnerabilities
+### Create the 100MB Dummy File
+The edge client looks for a file in your `$HOME` directory named `file_to_download.txt`. Let's create a dummy 100MB file.
+**On Linux/macOS/WSL:**
+```bash
+dd if=/dev/urandom of=~/file_to_download.txt bs=1M count=100
+```
+**On Windows (PowerShell):**
+```powershell
+fsutil file createnew $env:USERPROFILE\file_to_download.txt 104857600
+```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+### Start the Edge Client Daemon
+The client runs as an artisan command. Open a separate terminal window/tab to run the polling daemon:
+```bash
+# If running via Sail
+./vendor/bin/sail artisan edge:poll
 
-## License
+# Or if running locally (ensure NODE_ROLE=client is set)
+NODE_ROLE="client" php artisan edge:poll
+```
+You should see output indicating it is connected and waiting for jobs.
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+### Trigger the Download from the Server
+In another terminal, run the server CLI command to trigger the download from `client_id = 1`:
+```bash
+./vendor/bin/sail artisan server:trigger 1
+```
+
+### Observe the Results
+1. Watch the edge client terminal. You will see it pick up the pending job and stream the 100MB file to the server.
+2. Check the `storage/app/downloads/` directory on the server to verify the file was successfully received.
+
+> **Note on PHP Upload Limits:** For the server to accept a 100MB multipart file upload, the PHP container's `php.ini` must have `upload_max_filesize` and `post_max_size` configured to allow at least 120M.
