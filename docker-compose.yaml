@@ -1,0 +1,37 @@
+services:
+  silentmode:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "9005:8000"
+    environment:
+      CENTRAL_SERVER_URL: http://localhost:8000
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: silentmode
+      DB_USERNAME: root
+      DB_PASSWORD: password
+    volumes:
+      - .:/var/www/html
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  mysql:
+    image: mysql:8.0
+    ports:
+      - "3307:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: silentmode
+    volumes:
+      - silentmode_mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-ppassword"]
+      retries: 3
+      timeout: 5s
+
+volumes:
+  silentmode_mysql_data:

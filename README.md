@@ -18,15 +18,19 @@ cd silentmode
 ---
 
 ## 2. Quick Setup & Run (Docker)
-We have provided an easy setup script that handles installing PHP dependencies, setting up the `.env` file, starting Docker, and seeding the database.
+We use a custom, production-ready `Dockerfile` and `docker-compose.yaml` to ensure maximum reliability. 
 
-Simply run:
+We provide a helper script (`shell.sh`) so you never have to type complex docker commands. To build the images and start the system, simply run:
 ```bash
-sh shell.sh
+sh shell.sh up
 ```
 *(On Windows, ensure Docker Desktop is running and execute this within WSL2 or Git Bash).*
 
-This script natively uses `docker compose up -d` and seeds the database with a test client automatically.
+**What happens automatically?**
+1. Docker builds the custom PHP 8.2 image.
+2. The `init.sh` container entrypoint runs automatically inside the container.
+3. It installs `composer` dependencies, creates `.env`, generates the app key, and seeds the database with a test client (`test-token-123`).
+4. Finally, it starts the local server.
 
 ---
 
@@ -44,20 +48,20 @@ fsutil file createnew $env:USERPROFILE\file_to_download.txt 104857600
 ```
 
 ### Start the Edge Client Daemon
-The client runs as an artisan command. Open a separate terminal window/tab to run the polling daemon using docker compose:
+The client runs as an artisan command. Open a separate terminal window/tab to run the polling daemon:
 ```bash
-docker compose exec laravel.test php artisan edge:poll
+sh shell.sh poll
 ```
 You should see output indicating it is connected and waiting for jobs.
 
 ### Trigger the Download from the Server
 In another terminal, run the server CLI command to trigger the download from `client_id = 1`:
 ```bash
-docker compose exec laravel.test php artisan server:trigger 1
+sh shell.sh trigger 1
 ```
 
 ### Observe the Results
 1. Watch the edge client terminal. You will see it pick up the pending job and stream the 100MB file to the server.
 2. Check the `storage/app/downloads/` directory on the server to verify the file was successfully received.
 
-> **Note on PHP Upload Limits:** For the server to accept a 100MB multipart file upload, the PHP container's `php.ini` must have `upload_max_filesize` and `post_max_size` configured to allow at least 120M.
+> **Note on PHP Upload Limits:** For the server to accept a 100MB multipart file upload, the `Dockerfile` automatically configures the PHP container's `php.ini` to set `upload_max_filesize` and `post_max_size` to `120M`.

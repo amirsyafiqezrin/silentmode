@@ -1,37 +1,40 @@
 #!/bin/bash
+set -e
 
-echo "Starting Silentmode Project Setup..."
+command=$1
 
-# Install composer dependencies using Docker if vendor folder does not exist
-if [ ! -d "vendor" ]; then
-    echo "Installing PHP dependencies..."
-    docker run --rm \
-        -u "$(id -u):$(id -g)" \
-        -v "$(pwd):/var/www/html" \
-        -w /var/www/html \
-        laravelsail/php8.2-composer:latest \
-        composer install --ignore-platform-reqs
-fi
-
-# Create .env if not exists
-if [ ! -f ".env" ]; then
-    echo "Creating .env file..."
-    cp .env.example .env
-fi
-
-# Start Docker containers using Docker Compose
-echo "Starting Docker containers..."
-docker compose up -d
-
-# Wait for MySQL to initialize properly
-echo "Waiting for database to initialize (10 seconds)..."
-sleep 10
-
-# Generate application key and migrate database with seeds
-echo "Setting up Laravel application..."
-docker compose exec -T laravel.test php artisan key:generate
-docker compose exec -T laravel.test php artisan migrate:fresh --seed
-
-echo "=========================================="
-echo "Setup Complete! The application is running."
-echo "=========================================="
+case $command in
+  "up")
+    echo "Starting Silentmode Docker Environment..."
+    docker compose up -d --build
+    echo "Containers are up! The init.sh script will handle dependencies and migrations in the background."
+    ;;
+  "down")
+    docker compose down
+    ;;
+  "poll")
+    docker compose exec -e NODE_ROLE=client silentmode php artisan edge:poll
+    ;;
+  "trigger")
+    client_id=${2:-1}
+    docker compose exec silentmode php artisan server:trigger $client_id
+    ;;
+  "artisan")
+    shift
+    docker compose exec silentmode php artisan "$@"
+    ;;
+  *)
+    echo "====================================="
+    echo " Silentmode Helper Script            "
+    echo "====================================="
+    echo "Usage: sh shell.sh [command]"
+    echo ""
+    echo "Commands:"
+    echo "  up       - Build and start the Docker containers"
+    echo "  down     - Stop and remove the Docker containers"
+    echo "  poll     - Run the edge client daemon (polls server for jobs)"
+    echo "  trigger  - Trigger a download from server (e.g., sh shell.sh trigger 1)"
+    echo "  artisan  - Run any php artisan command (e.g., sh shell.sh artisan tinker)"
+    echo ""
+    ;;
+esac
