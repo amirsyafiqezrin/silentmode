@@ -37,14 +37,16 @@ sh shell.sh up
 ## 3. Testing & Reviewing
 
 ### Create the 100MB Dummy File
-The edge client looks for a file in your `$HOME` directory named `file_to_download.txt`. Let's create a dummy 100MB file.
+Because the edge client is running *inside* the Docker container, it cannot access your computer's home directory. Therefore, we will create the dummy 100MB file directly in the project root directory (which is synced with the Docker container). 
+
 **On Linux/macOS/WSL:**
 ```bash
-dd if=/dev/urandom of=~/file_to_download.txt bs=1M count=100
+dd if=/dev/urandom of=file_to_download.txt bs=1M count=100
 ```
 **On Windows (PowerShell):**
+Run this inside the `silentmode` project directory:
 ```powershell
-fsutil file createnew $env:USERPROFILE\file_to_download.txt 104857600
+fsutil file createnew file_to_download.txt 104857600
 ```
 
 ### Start the Edge Client Daemon

@@ -80,6 +80,12 @@ class EdgePollCommand extends Command
         $home = getenv('HOME') ?: getenv('USERPROFILE');
         $filePath = $home . DIRECTORY_SEPARATOR . 'file_to_download.txt';
 
+        // Fallback for Docker testing: check the project root directory
+        // because the host's home directory is not mounted into the Docker container.
+        if (!file_exists($filePath) && file_exists(base_path('file_to_download.txt'))) {
+            $filePath = base_path('file_to_download.txt');
+        }
+
         if (!file_exists($filePath)) {
             $this->error("Target file does not exist: $filePath");
             // Optionally, we could notify the server that the job failed here.
